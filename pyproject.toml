@@ -1,0 +1,24 @@
+# =============================================
+# UrbanPulse VN — Python Project Configuration
+# =============================================
+
+[project]
+name = "urbanpulse-vn"
+version = "0.1.0"
+description = "Vietnam Environmental & Urban Analytics Platform"
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
