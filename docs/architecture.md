@@ -2,6 +2,8 @@
 
 Kiến trúc bên dưới thể hiện luồng chạy dữ liệu từ lúc Ingestion (Batch/Streaming) qua các tầng Bronze, Silver, Gold và cuối cùng đưa lên hệ thống Serving và Dashboard theo kiến trúc Medallion kết hợp Open Data Lakehouse (Iceberg + Nessie + Trino).
 
+![Sơ đồ Kiến trúc UrbanPulse VN](./architecture.png)
+
 ```mermaid
 flowchart TD
     %% Define Styles
