@@ -12,52 +12,52 @@ flowchart TD
     
     %% Tầng Data Sources
     subgraph DataSources ["🌍 7 Vietnam Data Sources"]
-        API1("OpenAQ (API)")
-        API2("Open-Meteo Weather")
-        API3("Open-Meteo Flood")
-        Crawl1("🕷 cem.gov.vn (Scrapy)")
-        Crawl2("🕷 nchmf.gov.vn (Scrapy)")
-        API4("NASA FIRMS (API)")
-        API5("OSM (Overpass API)")
+        API1["OpenAQ (API)"]
+        API2["Open-Meteo Weather"]
+        API3["Open-Meteo Flood"]
+        Crawl1["🕷 cem.gov.vn (Scrapy)"]
+        Crawl2["🕷 nchmf.gov.vn (Scrapy)"]
+        API4["NASA FIRMS (API)"]
+        API5["OSM (Overpass API)"]
     end
 
     %% Tầng Ingestion & Streaming
     subgraph Ingestion ["🚀 Ingestion Layer (Python + K8s CronJob/Lambda)"]
-        Batch("Batch Extractors")
-        StreamP("Kafka Producer")
-        Debezium("Debezium CDC")
+        Batch["Batch Extractors"]
+        StreamP["Kafka Producer"]
+        Debezium["Debezium CDC"]
     end
 
     %% Streaming Broker
     subgraph Streaming ["⚡ Streaming Broker (Kafka)"]
         Kafka["Kafka Topics"]
-        SchemaRegistry["Schema Validation (Avro)\nValid ➜ Process / Invalid ➜ DLQ"]
+        SchemaRegistry["Schema Validation (Avro)<br>Valid ➜ Process / Invalid ➜ DLQ"]
     end
 
     %% Tầng Data Lake (Bronze & Silver)
     subgraph DataLake ["🗄️ Open Data Lakehouse (MinIO + S3)"]
-        Bronze[("🥉 Bronze\n(MinIO / S3 Raw)")]
-        Nessie{"🗂️ Nessie\n(Iceberg Catalog)"}
+        Bronze[("🥉 Bronze<br>(MinIO / S3 Raw)")]
+        Nessie{"🗂️ Nessie<br>(Iceberg Catalog)"}
         BronzeIce[("🧊 Bronze Iceberg Format")]
     end
 
     %% Tầng Data Warehouse (Silver & Gold)
     subgraph DWH ["🏢 Data Warehouse (PostgreSQL / GCP BigQuery)"]
-        Silver[("🥈 Silver\n(Cleaned & Enriched)")]
-        Gold[("🥇 Gold\n(Fact & Dim - Star Schema)")]
-        Sandbox[("🧪 Sandbox\n(Read-Write cho EDA)")]
+        Silver[("🥈 Silver<br>(Cleaned & Enriched)")]
+        Gold[("🥇 Gold<br>(Fact & Dim - Star Schema)")]
+        Sandbox[("🧪 Sandbox<br>(Read-Write cho EDA)")]
     end
 
     %% Tầng Transform & Orchestration
     subgraph Transform ["⚙️ Transform & Orchestration"]
-        Spark("Apache Spark\n(Bronze ➜ Silver)")
-        dbt("dbt\n(Silver ➜ Gold)")
-        Airflow{"Apache Airflow\n(DAG Orchestration)"}
+        Spark("Apache Spark<br>(Bronze ➜ Silver)")
+        dbt("dbt<br>(Silver ➜ Gold)")
+        Airflow{"Apache Airflow<br>(DAG Orchestration)"}
     end
 
     %% Tầng Serving & Dashboard
     subgraph Serving ["📊 Serving & Serving Layer"]
-        Trino("🟢 Trino\n(Federated Query Engine)")
+        Trino("🟢 Trino<br>(Federated Query Engine)")
         Streamlit("📈 Streamlit Dashboard")
         Jupyter("📓 JupyterLab Sandbox")
     end
