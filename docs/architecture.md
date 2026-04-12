@@ -4,111 +4,39 @@ Kiến trúc bên dưới thể hiện luồng chạy dữ liệu từ lúc Inge
 
 ![Sơ đồ Kiến trúc UrbanPulse VN](./architecture.png)
 
-```mermaid
-flowchart TD
-    %% Define Styles
-    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#232F3E;
-    classDef gcp fill:#4285F4,stroke:#0F9D58,stroke-width:2px,color:white;
-    classDef tool fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    classDef data fill:#e1f5fe,stroke:#01579b,stroke-width:1px;
-    
-    %% Tầng Data Sources
-    subgraph DataSources ["🌍 7 Vietnam Data Sources"]
-        API1["OpenAQ (API)"]
-        API2["Open-Meteo Weather"]
-        API3["Open-Meteo Flood"]
-        Crawl1["🕷 cem.gov.vn (Scrapy)"]
-        Crawl2["🕷 nchmf.gov.vn (Scrapy)"]
-        API4["NASA FIRMS (API)"]
-        API5["OSM (Overpass API)"]
-    end
-
-    %% Tầng Ingestion & Streaming
-    subgraph Ingestion ["🚀 Ingestion Layer (Python + K8s CronJob/Lambda)"]
-        Batch["Batch Extractors"]
-        StreamP["Kafka Producer"]
-        Debezium["Debezium CDC"]
-    end
-
-    %% Streaming Broker
-    subgraph Streaming ["⚡ Streaming Broker (Kafka)"]
-        Kafka["Kafka Topics"]
-        SchemaRegistry["Schema Validation (Avro)<br>Valid ➜ Process / Invalid ➜ DLQ"]
-    end
-
-    %% Tầng Data Lake (Bronze & Silver)
-    subgraph DataLake ["🗄️ Open Data Lakehouse (MinIO + S3)"]
-        Bronze[("🥉 Bronze<br>(MinIO / S3 Raw)")]
-        Nessie{"🗂️ Nessie<br>(Iceberg Catalog)"}
-        BronzeIce[("🧊 Bronze Iceberg Format")]
-    end
-
-    %% Tầng Data Warehouse (Silver & Gold)
-    subgraph DWH ["🏢 Data Warehouse (PostgreSQL / GCP BigQuery)"]
-        Silver[("🥈 Silver<br>(Cleaned & Enriched)")]
-        Gold[("🥇 Gold<br>(Fact & Dim - Star Schema)")]
-        Sandbox[("🧪 Sandbox<br>(Read-Write cho EDA)")]
-    end
-
-    %% Tầng Transform & Orchestration
-    subgraph Transform ["⚙️ Transform & Orchestration"]
-        Spark("Apache Spark<br>(Bronze ➜ Silver)")
-        dbt("dbt<br>(Silver ➜ Gold)")
-        Airflow{"Apache Airflow<br>(DAG Orchestration)"}
-    end
-
-    %% Tầng Serving & Dashboard
-    subgraph Serving ["📊 Serving & Serving Layer"]
-        Trino("🟢 Trino<br>(Federated Query Engine)")
-        Streamlit("📈 Streamlit Dashboard")
-        Jupyter("📓 JupyterLab Sandbox")
-    end
-
-    %% Tầng Monitoring & Quality
-    subgraph Monitoring ["🛡️ Quality & Monitoring"]
-        GE("Great Expectations (Data Quality)")
-        PromGraf("Prometheus + Grafana (Infra)")
-        MLflow("MLflow (Model Tracking)")
-        Marquez("Marquez (Data Lineage)")
-        Vault("HashiCorp Vault (Secrets)")
-    end
-
-    %% Define connections
-    DataSources --> Batch
-    API1 -.-> StreamP
-    
-    Batch --> Bronze
-    StreamP --> Kafka
-    Debezium -.-> Kafka
-    Kafka --> SchemaRegistry
-    SchemaRegistry --> Bronze
-    
-    Bronze --> Spark
-    Spark --> Silver
-    Spark -.-> BronzeIce
-    BronzeIce -.-> Nessie
-    
-    Silver --> dbt
-    dbt --> Gold
-    dbt -.-> GE
-    
-    Gold -.-> Sandbox
-    Gold --> Trino
-    BronzeIce --> Trino
-    
-    Trino --> Streamlit
-    Jupyter --> Sandbox
-    Jupyter -.-> MLflow
-    
-    Airflow --> Batch
-    Airflow --> Spark
-    Airflow --> dbt
-    
-    %% Style applies
-    class Batch,StreamP,Spark,dbt,Trino,Streamlit,Jupyter tool;
-    class Bronze,Silver,Gold,BronzeIce,Sandbox data;
-    class Bronze,Kafka aws;
-    class Silver,Gold,Streamlit gcp;
+```text
+                         ┌──────────────────────────────────────┐
+                         │         ORCHESTRATION (Airflow)       │
+                         └──────────┬───────────────┬───────────┘
+                                    │               │
+ ┌──────────────┐  ┌────────────────▼──┐  ┌────────▼────────┐  ┌──────────────────┐
+ │ DATA SOURCES │  │     BRONZE        │  │     SILVER       │  │      GOLD        │
+ │  (7 VN src)  │  │   (Raw / Landing) │  │   (Cleaned)      │  │   (Business)     │
+ │• OpenAQ      │  │                   │  │                  │  │                  │
+ │• Open-Meteo  │─▶│  AWS S3 / MinIO   │─▶│  PostgreSQL /    │─▶│  PostgreSQL /    │
+ │• 🕷CEM.gov   │  │  Parquet / JSON   │  │  BigQuery        │  │  BigQuery        │
+ │• 🕷NCHMF.gov │  │  Apache Iceberg  │  │  dbt staging     │  │  dbt marts       │
+ │• NASA FIRMS  │  │   (via Nessie)    │  │                  │  │                  │
+ │• OSM         │  │                   │  │                  │  │                  │
+ └──────┬───────┘  └───────────────────┘  └──────────────────┘  └────────┬─────────┘
+        │                                                                │
+ ┌──────▼───────┐  ┌──────────────────┐  ┌──────────────┐  ┌────────────▼─────────┐
+ │  STREAMING   │  │ SCHEMA VALIDATION│  │  DATA QUALITY│  │     SERVING LAYER    │
+ │  Kafka /     │─▶│ Valid → process  │  │• Great Expect│  │• Streamlit Dashboard │
+ │  GCP Pub/Sub │  │ Invalid → DLQ    │  │• dbt tests   │  │• Grafana Monitoring  │
+ └──────────────┘  └──────────────────┘  └──────────────┘  │• Trino / BigQuery   │
+                                                           │• Looker Studio      │
+ ┌─────────────────────────────────────────────────────────│• 🧪 Sandbox (Jupyter)│
+ │  SANDBOX LAYER                                          └──────────────────────┘
+ │  JupyterLab → Read Gold (SELECT only) → Write sandbox schema (read-write)    │
+ │  EDA / ML experiments / cross-source correlation analysis                      │
+ └────────────────────────────────────────────────────────────────────────────────┘
+ ┌────────────────────────────────────────────────────────────────────────────────┐
+ │                           INFRASTRUCTURE (Local / Hybrid)                     │
+ │  DEV:   Docker Compose (Trino, Postgres, MinIO, Kafka, Redis, Nessie, Vault)  │
+ │  K8S:   Kind cluster (Helm charts)                                            │
+ │  CLOUD: Hybrid (AWS Lambda + S3) + (GCP BigQuery + Pub/Sub + Looker)          │
+ └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Giải thích Luồng Dữ liệu (Data Flow Diagram)
