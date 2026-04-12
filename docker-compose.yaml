@@ -132,7 +132,6 @@ services:
       - "${TRINO_PORT:-8090}:8080"
     volumes:
       - ./trino/etc:/etc/trino:ro
-      - ./trino/catalog:/etc/trino/catalog:ro
     depends_on:
       nessie:
         condition: service_healthy
