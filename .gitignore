@@ -1,0 +1,86 @@
+# =============================================
+# UrbanPulse VN — .gitignore
+# =============================================
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+ENV/
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# ── Environment Variables ──
+.env
+.env.local
+.env.*.local
+
+# ── Docker Data Volumes ──
+data/
+logs/
+
+# ── Terraform ──
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# ── dbt ──
+dbt_transform/target/
+dbt_transform/dbt_packages/
+dbt_transform/logs/
+
+# ── Spark ──
+spark_jobs/jars/*.jar
+spark-warehouse/
+metastore_db/
+derby.log
+
+# ── Great Expectations ──
+data_quality/uncommitted/
+data_quality/great_expectations/uncommitted/
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+sandbox/.ipynb_checkpoints/
+
+# ── MLflow ──
+mlruns/
+mlartifacts/
+
+# ── Airflow ──
+airflow/logs/
+
+# ── Misc ──
+*.log
+*.bak
+*.tmp
+*.zip
+lambda.zip
+node_modules/

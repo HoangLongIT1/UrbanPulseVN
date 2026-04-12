@@ -1,0 +1,15 @@
+---
+description: "Luật xử lý dữ liệu Big Data & Lakehouse (Spark, Apache Iceberg)"
+globs: "spark_jobs/**/*.py"
+---
+
+# ⚡ SPARK & ICEBERG RULES
+- **Memory Limits**: 
+  - Always explicitly configure Spark driver and executor memory realistically for the 16GB RAM limit.
+  - E.g., `spark.driver.memory=1g`, `spark.executor.memory=1g`.
+- **Apache Iceberg Format**: 
+  - The project operates an Open Lakehouse using **Apache Iceberg**, NOT Delta Lake or raw Parquet.
+  - All transformations saving back to the data lake must be formatted as Iceberg tables.
+- **Nessie Catalog**: 
+  - Ensure Spark sessions are properly configured with `nessie-spark-extensions` and `iceberg-spark-runtime`.
+  - Interact with Iceberg tables via the Nessie Catalog REST API.

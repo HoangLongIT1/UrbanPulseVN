@@ -1,0 +1,14 @@
+---
+description: "Luật cấu trúc Data Warehouse Modeling & SQL"
+globs: "dbt_transform/**/*.sql, dbt_transform/**/*.yml"
+---
+
+# 🏗️ DBT & SQL MODELING RULES
+- **Schema Design**: 
+  - Adhere to the Medallion Architecture (Bronze -> Silver -> Gold).
+  - Use **Star Schema** / One Big Table (OBT) for Gold marts to optimize read performance and reduce JOINs for BigQuery. Do NOT use highly normalized Snowflake Schemas.
+- **SQL Standards**:
+  - Always use CTEs (Common Table Expressions) rather than dense nested subqueries.
+  - Ensure all SQL passes `sqlfluff` validation for the relevant dialect (Postgres or BigQuery).
+- **Documentation**: 
+  - Every model MUST have a corresponding `.yml` file documenting all columns, descriptions, and primary/unique key constraints.
