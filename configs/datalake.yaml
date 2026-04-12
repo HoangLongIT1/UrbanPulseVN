@@ -1,0 +1,54 @@
+# =============================================
+# UrbanPulse VN — Data Lake Configuration
+# =============================================
+# Used by: ingestion/, utils/, spark_jobs/
+
+minio:
+  endpoint: "http://minio:9000"
+  external_endpoint: "http://localhost:9000"
+  console_url: "http://localhost:9001"
+  access_key: "${MINIO_ROOT_USER:-minioadmin}"
+  secret_key: "${MINIO_ROOT_PASSWORD:-minioadmin123}"
+  region: "us-east-1"
+  secure: false
+
+  # Bucket layout
+  buckets:
+    raw: "raw"                      # Bronze layer — raw JSON/Parquet
+    processed: "processed"          # Silver layer — cleaned data
+    iceberg: "iceberg"              # Iceberg tables managed by Nessie
+    mlflow_artifacts: "mlflow-artifacts"  # MLflow model artifacts
+
+nessie:
+  uri: "http://nessie:19120/api/v2"
+  external_uri: "http://localhost:19120/api/v2"
+  default_branch: "main"
+
+trino:
+  host: "trino"
+  port: 8080
+  external_port: 8090
+  catalog: "datalake"
+  user: "urbanpulse"
+
+postgresql:
+  host: "postgres"
+  port: 5432
+  external_port: 5432
+  database: "${POSTGRES_DB:-urbanpulse}"
+  user: "${POSTGRES_USER:-urbanpulse}"
+  password: "${POSTGRES_PASSWORD:-urbanpulse_dev_2024}"
+
+  # Medallion schemas
+  schemas:
+    bronze: "bronze"
+    silver: "silver"
+    gold: "gold"
+    sandbox: "sandbox"
+
+redis:
+  host: "redis"
+  port: 6379
+  external_port: 6379
+  db: 0
+  cache_ttl: 3600  # 1 hour default TTL for crawler cache

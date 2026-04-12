@@ -1,0 +1,71 @@
+# =============================================
+# UrbanPulse VN — Monitoring Docker Compose
+# =============================================
+# Services: Vault (Sprint 0), Prometheus + Grafana (Sprint 4)
+# RAM: ~0.8GB total
+#
+# Usage:
+#   make up-monitoring
+
+networks:
+  urbanpulse-net:
+    name: urbanpulse-net
+    external: true
+
+services:
+  # ── HashiCorp Vault (Secret Management) ────────────
+  # Dev mode: no license required, 100% free
+  # ⚠️  Dev mode resets on restart — re-seed with vault_seed.sh
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: urbanpulse-vault
+    restart: unless-stopped
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-urbanpulse-dev-token}
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - urbanpulse-net
+
+  # ── Prometheus (Sprint 4) ──────────────────────────
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: urbanpulse-prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #   networks:
+  #     - urbanpulse-net
+
+  # ── Grafana (Sprint 4) ─────────────────────────────
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: urbanpulse-grafana
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #   networks:
+  #     - urbanpulse-net

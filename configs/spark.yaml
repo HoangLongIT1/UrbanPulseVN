@@ -1,0 +1,45 @@
+# =============================================
+# UrbanPulse VN — Spark Configuration
+# =============================================
+# Used by: spark_jobs/, streaming consumer
+# ⚠️  Memory limits tuned for 16GB host machine
+
+spark:
+  app_name: "UrbanPulse-VN"
+  master: "spark://spark-master:7077"
+
+  driver:
+    memory: "1g"
+    cores: 1
+
+  executor:
+    memory: "1g"
+    cores: 1
+    instances: 1
+
+  # Iceberg + Nessie configuration
+  iceberg:
+    catalog_name: "nessie"
+    catalog_type: "nessie"
+    nessie_uri: "http://nessie:19120/api/v2"
+    nessie_ref: "main"
+    warehouse: "s3a://iceberg/"
+
+  # S3/MinIO connection (for Spark to read/write)
+  s3:
+    endpoint: "http://minio:9000"
+    access_key: "${MINIO_ROOT_USER:-minioadmin}"
+    secret_key: "${MINIO_ROOT_PASSWORD:-minioadmin123}"
+    path_style_access: true
+    region: "us-east-1"
+
+  # Spark SQL extensions for Iceberg
+  extensions:
+    - "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+
+  # Required JAR files (placed in spark_jobs/jars/)
+  jars:
+    - "iceberg-spark-runtime-3.5_2.12.jar"
+    - "nessie-spark-extensions-3.5_2.12.jar"
+    - "hadoop-aws-3.3.4.jar"
+    - "aws-java-sdk-bundle-1.12.262.jar"
