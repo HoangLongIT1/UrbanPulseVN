@@ -46,7 +46,7 @@ class PostgresLoader:
         query = """
         CREATE TABLE IF NOT EXISTS ingestion_logs (
             id SERIAL PRIMARY KEY,
-            source_name VARCHAR(100) NOT ROWS,
+            source_name VARCHAR(100) NOT NULL,
             crawled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             row_count INTEGER NOT NULL,
             object_path VARCHAR(500),

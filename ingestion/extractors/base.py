@@ -8,7 +8,8 @@ from this class and implements ``extract()``.
 Features:
     - HTTP client with retry + exponential backoff
     - Automatic date-partitioned object naming for MinIO
-    - Redis/local-file fallback cache when API is unreachable
+    - Local-file fallback cache when API is unreachable
+    - Cache TTL enforcement (stale cache is logged and discarded)
     - Structured logging (no print statements)
 
 Usage:
@@ -64,7 +65,8 @@ class BaseExtractor(ABC):
             backoff_factor: Multiplier applied to backoff between retries.
             initial_backoff: Seconds to wait before the first retry.
             http_timeout: HTTP request timeout in seconds.
-            cache_ttl: Time-to-live for cached data (seconds).
+            cache_ttl: Time-to-live for cached data in seconds. Cache older
+                than this threshold will be discarded and not served as fallback.
             raw_bucket: MinIO bucket for raw data landing.
         """
         self.max_retries = max_retries
@@ -79,10 +81,11 @@ class BaseExtractor(ABC):
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            "Extractor initialised: source=%s retries=%d backoff=%ds",
+            "Extractor initialised: source=%s retries=%d backoff=%ds cache_ttl=%ds",
             self.SOURCE_NAME,
             self.max_retries,
             self.initial_backoff,
+            self.cache_ttl,
         )
 
     # ------------------------------------------------------------------
@@ -218,6 +221,87 @@ class BaseExtractor(ABC):
         """
         return self._request("GET", url, params=params, headers=headers)
 
+    def _post_form(
+        self,
+        url: str,
+        *,
+        form_data: dict[str, str],
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """POST with form-encoded data (application/x-www-form-urlencoded).
+
+        Unlike ``_request`` which sends JSON, this method sends form data —
+        required by APIs such as OSM Overpass that do not accept JSON bodies.
+        Applies the same retry + exponential backoff logic as ``_request``.
+
+        Args:
+            url: Target URL.
+            form_data: Key-value pairs to send as form body.
+            headers: Additional HTTP headers.
+
+        Returns:
+            The successful ``httpx.Response``.
+
+        Raises:
+            ExtractionError: After all retries are exhausted.
+        """
+        backoff = self.initial_backoff
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = self._http_client.post(
+                    url, data=form_data, headers=headers
+                )
+                response.raise_for_status()
+                logger.debug(
+                    "POST (form) %s → %d (attempt %d)",
+                    url,
+                    response.status_code,
+                    attempt,
+                )
+                return response
+
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status == 429 or 500 <= status < 600:
+                    logger.warning(
+                        "HTTP %d on POST %s — retrying in %.1fs "
+                        "(attempt %d/%d)",
+                        status,
+                        url,
+                        backoff,
+                        attempt,
+                        self.max_retries,
+                    )
+                else:
+                    logger.error(
+                        "HTTP %d on POST %s — not retryable", status, url
+                    )
+                    raise ExtractionError(
+                        f"HTTP {status} from POST {url}"
+                    ) from exc
+
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                logger.warning(
+                    "Connection error on POST %s — retrying in %.1fs "
+                    "(attempt %d/%d)",
+                    url,
+                    backoff,
+                    attempt,
+                    self.max_retries,
+                )
+                if attempt == self.max_retries:
+                    raise ExtractionError(
+                        f"Failed to POST {url} after {self.max_retries} attempts"
+                    ) from exc
+
+            time.sleep(backoff)
+            backoff *= self.backoff_factor
+
+        raise ExtractionError(
+            f"All {self.max_retries} retries exhausted for POST {url}"
+        )
+
     # ------------------------------------------------------------------
     # Cache helpers (local-file fallback)
     # ------------------------------------------------------------------
@@ -240,20 +324,39 @@ class BaseExtractor(ABC):
         return cache_file
 
     def _load_cache(self) -> list[dict[str, Any]] | None:
-        """Load data from local cache if it exists.
+        """Load data from local cache if it exists and is within TTL.
+
+        Cache files older than ``self.cache_ttl`` seconds are considered
+        stale and will not be served — this prevents the pipeline from
+        silently returning days-old data during prolonged API outages.
 
         Returns:
-            Cached records, or ``None`` if no cache available.
+            Cached records if valid, or ``None`` if not available / expired.
         """
         cache_file = self._cache_dir / "latest.json"
         if not cache_file.exists():
             logger.debug("No cache file found for %s", self.SOURCE_NAME)
             return None
 
+        # --- FIX: Enforce cache_ttl ---
+        file_age_seconds = time.time() - cache_file.stat().st_mtime
+        if file_age_seconds > self.cache_ttl:
+            logger.warning(
+                "Cache expired for %s (age=%.0fs, ttl=%ds) — "
+                "discarding stale data",
+                self.SOURCE_NAME,
+                file_age_seconds,
+                self.cache_ttl,
+            )
+            return None
+
         try:
             data = json.loads(cache_file.read_text(encoding="utf-8"))
             logger.info(
-                "Cache loaded: %s (%d records)", cache_file, len(data)
+                "Cache loaded: %s (%d records, age=%.0fs)",
+                cache_file,
+                len(data),
+                file_age_seconds,
             )
             return data
         except (json.JSONDecodeError, OSError) as exc:
@@ -306,13 +409,14 @@ class BaseExtractor(ABC):
     def run(self) -> pd.DataFrame:
         """Execute the full extract pipeline with fallback.
 
-        Attempts ``extract()``; on failure falls back to local cache.
+        Attempts ``extract()``; on failure falls back to local cache
+        (only if cache is within TTL).
 
         Returns:
             DataFrame of extracted (or cached) records.
 
         Raises:
-            ExtractionError: If extraction fails and no cache exists.
+            ExtractionError: If extraction fails and no valid cache exists.
         """
         try:
             df = self.extract()
@@ -339,7 +443,7 @@ class BaseExtractor(ABC):
                 return pd.DataFrame(cached)
 
             logger.error(
-                "No cache available for %s — extraction fully failed",
+                "No valid cache available for %s — extraction fully failed",
                 self.SOURCE_NAME,
             )
             raise
@@ -367,3 +471,4 @@ class BaseExtractor(ABC):
 
 class ExtractionError(Exception):
     """Raised when data extraction fails after retries and cache miss."""
+    

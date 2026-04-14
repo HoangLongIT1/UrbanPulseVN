@@ -1,11 +1,19 @@
 """
 UrbanPulse VN — NASA FIRMS Extractor.
 
-Extracts active tire hotspots from NASA FIRMS (Fire Information for Resource 
+Extracts active fire hotspots from NASA FIRMS (Fire Information for Resource
 Management System) for Vietnam.
 
 API docs: https://earthdata.nasa.gov/firms/api
 Format: CSV -> Pandas DataFrame.
+
+Authentication note:
+    NASA FIRMS country/CSV endpoint requires the MAP_KEY embedded in the URL
+    path — this is the API's own design and cannot be moved to a header.
+    The key is therefore NOT logged at INFO level; only a redacted URL is
+    emitted for traceability. Ensure NASA_EARTHDATA_TOKEN is stored
+    exclusively in environment variables / secrets manager and never
+    committed to source control.
 """
 
 from __future__ import annotations
@@ -21,12 +29,16 @@ from ingestion.extractors.base import BaseExtractor, ExtractionError
 
 logger = logging.getLogger(__name__)
 
+# NASA FIRMS country + source + day-range path segments (no token)
+_FIRMS_COUNTRY: str = "VNM"
+_FIRMS_SOURCE: str = "VIIRS_NOAA20_NRT"
+_FIRMS_DAY_RANGE: int = 1
+
 
 class NASAFirmsExtractor(BaseExtractor):
     """Extract active fire hotspots for Vietnam.
 
-    Uses the FIRMS area/csv endpoint. We bound the query to the
-    general coordinates of VNM.
+    Uses the FIRMS country/csv endpoint. We bound the query to VNM.
 
     Example:
         >>> with NASAFirmsExtractor() as ext:
@@ -40,37 +52,51 @@ class NASAFirmsExtractor(BaseExtractor):
         """Fetch and parse NASA FIRMS fire hotspots.
 
         Returns:
-            DataFrame containing hotspot latitudes, longitudes, confidence, 
+            DataFrame containing hotspot latitudes, longitudes, confidence,
             and acquisition details.
+
+        Raises:
+            ExtractionError: When the token is missing or the API fails
+                after retries.
         """
         if not NASA_EARTHDATA_TOKEN:
-            logger.warning("NASA_EARTHDATA_TOKEN not found — skipping FIRMS extraction")
+            logger.warning(
+                "NASA_EARTHDATA_TOKEN not set — skipping FIRMS extraction"
+            )
             raise ExtractionError("Missing NASA Earthdata Token")
 
-        # Vietnam country code in FIRMS is "VNM"
-        # We query the last 1 day (1) of VIIRS NOAA-20 data
-        url = f"{NASA_FIRMS_URL}/VNM/VIIRS_NOAA20_NRT/1"
+        # NASA FIRMS country/CSV API requires the MAP_KEY in the URL path.
+        # This is a design constraint of their API — no header-based auth
+        # is available for this endpoint.
+        firms_url = (
+            "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
+            f"/{NASA_EARTHDATA_TOKEN}"
+            f"/{_FIRMS_SOURCE}/{_FIRMS_COUNTRY}/{_FIRMS_DAY_RANGE}"
+        )
+
+        # Log a redacted URL so the token does not appear in application logs.
+        safe_url = (
+            "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
+            f"/***/{_FIRMS_SOURCE}/{_FIRMS_COUNTRY}/{_FIRMS_DAY_RANGE}"
+        )
+        logger.info("Fetching NASA FIRMS data: %s", safe_url)
 
         try:
-            # FIRMS requires MAP_KEY header instead of Authorization in some endpoints,
-            # or directly in the URL path depending on the exact FIRMS API variant.
-            # Using standard implementation:
-            url_with_key = f"https://firms.modaps.eosdis.nasa.gov/api/country/csv/{NASA_EARTHDATA_TOKEN}/VNM/VIIRS_NOAA20_NRT/1"
-            
-            response = self._get(url_with_key)
+            response = self._get(firms_url)
             csv_data = response.text
         except ExtractionError as exc:
-            logger.warning("Failed to fetch NASA FIRMS data")
+            logger.warning("Failed to fetch NASA FIRMS data from %s", safe_url)
             raise ExtractionError("NASA FIRMS API fetch failed") from exc
 
-        # FIRMS returns CSV string
+        # FIRMS returns a CSV string; parse it directly.
         df = pd.read_csv(StringIO(csv_data))
-        
+
         if df.empty:
-            logger.warning("NASA FIRMS returned 0 hotspots for VNM")
+            logger.warning("NASA FIRMS returned 0 hotspots for %s", _FIRMS_COUNTRY)
             raise ExtractionError("0 hotspots returned")
 
         logger.info("Extracted %d active fire hotspots", len(df))
 
         records = df.to_dict(orient="records")
         return self._records_to_dataframe(records)
+        

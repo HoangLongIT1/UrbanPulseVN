@@ -31,6 +31,10 @@ _TARGET_PARAMETERS: list[str] = ["pm25", "pm10", "o3", "no2", "so2", "co"]
 _COUNTRY_CODE: str = "VN"
 _PAGE_LIMIT: int = 100  # max results per page (OpenAQ default)
 
+# Delay between per-location /latest calls to respect the 100 req/min limit.
+# At 2 s/call we stay safely under 92 req/min even with 100+ stations.
+_PER_LOCATION_DELAY: float = 2
+
 
 class AirQualityExtractor(BaseExtractor):
     """Extract air quality data from OpenAQ for Vietnam stations.
@@ -78,9 +82,15 @@ class AirQualityExtractor(BaseExtractor):
         logger.info("Found %d VN locations on OpenAQ", len(locations))
 
         all_records: list[dict[str, Any]] = []
-        for loc in locations:
+        for i, loc in enumerate(locations):
             records = self._fetch_latest_for_location(loc)
             all_records.extend(records)
+
+            # FIX: Throttle per-location calls to respect the 100 req/min
+            # free-tier limit. Without this delay, 100+ sequential /latest
+            # requests are fired in rapid succession and receive 429 errors.
+            if i < len(locations) - 1:
+                time.sleep(_PER_LOCATION_DELAY)
 
         if not all_records:
             raise ExtractionError(

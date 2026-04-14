@@ -50,6 +50,11 @@ class IngestionPipeline:
     def run_all(self, is_seed: bool = False) -> None:
         """Run all extractors and load data to Bronze.
 
+        Ingestion run statuses logged to PostgreSQL:
+            - ``SUCCESS``  — data extracted and uploaded to MinIO.
+            - ``EMPTY``    — source returned 0 rows (no upload performed).
+            - ``FAILED``   — an unhandled exception aborted the source.
+
         Args:
             is_seed: If True, this is a historical data backfill.
         """
@@ -63,14 +68,28 @@ class IngestionPipeline:
                 logger.info("--- Processing %s ---", source_name)
                 df = source.run()
 
-                # 2. Add pipeline metadata
+                # 2. FIX: Treat an empty DataFrame as its own status so it
+                #    does not masquerade as a successful non-empty run.
+                if df.empty:
+                    logger.warning(
+                        "Source %s returned 0 rows — skipping upload",
+                        source_name,
+                    )
+                    self.pg.log_run(
+                        source_name=source_name,
+                        row_count=0,
+                        object_path="",
+                        status="EMPTY",
+                    )
+                    continue
+
+                # 3. Add pipeline metadata
                 df["_run_mode"] = run_mode
 
-                # 3. Load to MinIO Bronze Layer
-                # Note: MinIOLoader auto-creates Hive partition paths
+                # 4. Load to MinIO Bronze Layer
                 object_path = self.minio.load(source_name=source_name, df=df)
 
-                # 4. Log to PostgreSQL registry
+                # 5. Log to PostgreSQL registry
                 self.pg.log_run(
                     source_name=source_name,
                     row_count=len(df),
@@ -79,7 +98,9 @@ class IngestionPipeline:
                 )
 
             except Exception as exc:
-                logger.error("Pipeline failed for %s: %s", source_name, exc)
+                logger.error(
+                    "Pipeline failed for %s: %s", source_name, exc, exc_info=True
+                )
                 self.pg.log_run(
                     source_name=source_name,
                     row_count=0,
@@ -89,7 +110,7 @@ class IngestionPipeline:
             finally:
                 if hasattr(source, "close"):
                     source.close()
-        
+
         logger.info("Ingestion pipeline completed.")
 
     def close(self) -> None:
@@ -108,7 +129,7 @@ def main() -> None:
     args = parser.parse_args()
 
     setup_logging()
-    
+
     pipeline = IngestionPipeline()
     try:
         pipeline.run_all(is_seed=(args.mode == "seed"))

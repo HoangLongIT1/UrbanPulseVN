@@ -1,7 +1,7 @@
 """
 UrbanPulse VN — Geo Features Extractor (OSM Overpass).
 
-Extracts critical infrastructural features (e.g. hospitals, shelters, 
+Extracts critical infrastructural features (e.g. hospitals, shelters,
 fire stations) inside Vietnam's bounding box using OSM Overpass API.
 """
 
@@ -24,6 +24,10 @@ class GeoFeaturesExtractor(BaseExtractor):
     Sends an Overpass QL query to find all hospitals and fire stations
     within the predefined Vietnam bounding box.
 
+    OSM Overpass requires POST with form-encoded ``data`` field —
+    the base ``_post_form()`` helper is used here instead of ``_get()``
+    to ensure retry + backoff still applies.
+
     Example:
         >>> with GeoFeaturesExtractor() as ext:
         ...     df = ext.run()
@@ -37,12 +41,18 @@ class GeoFeaturesExtractor(BaseExtractor):
 
         Returns:
             DataFrame of locations, coords, and tags.
+
+        Raises:
+            ExtractionError: When the Overpass API is unreachable after
+                retries and no cached fallback is available.
         """
         bbox_str = (
             f"{VIETNAM_BBOX['south']},{VIETNAM_BBOX['west']},"
             f"{VIETNAM_BBOX['north']},{VIETNAM_BBOX['east']}"
         )
 
+        # Overpass QL: fetch hospital and fire station nodes inside Vietnam.
+        # Timeout is set conservatively — Overpass can be slow on large bboxes.
         overpass_query = f"""
         [out:json][timeout:25];
         (
@@ -54,29 +64,18 @@ class GeoFeaturesExtractor(BaseExtractor):
         out skel qt;
         """
 
+        # OSM Overpass accepts POST with application/x-www-form-urlencoded.
+        # We use _post_form() so retry + backoff is handled identically to
+        # every other extractor in the pipeline.
         try:
-            response = self._request(
-                "POST", 
-                OSM_OVERPASS_URL, 
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                json_body=None,
-                params=None,
+            response = self._post_form(
+                OSM_OVERPASS_URL,
+                form_data={"data": overpass_query},
             )
-            # httpx allows putting data as string using content instead of json usually,
-            # base class requires dict handling, overriding carefully here:
-        except Exception as exc:
-            pass
-        
-        # Manually sending the query string via the http client to handle data=query
-        try:
-            raw_resp = self._http_client.post(
-                OSM_OVERPASS_URL, data={"data": overpass_query}
-            )
-            raw_resp.raise_for_status()
-            data = raw_resp.json()
-        except Exception as exc:
-            logger.warning("Failed to fetch OSM Overpass data: %s", exc)
-            raise ExtractionError("OSM Overpass API failed") from exc
+            data = response.json()
+        except ExtractionError:
+            logger.warning("Failed to fetch OSM Overpass data after retries")
+            raise
 
         elements = data.get("elements", [])
         if not elements:
