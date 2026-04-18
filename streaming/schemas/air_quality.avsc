@@ -1,0 +1,21 @@
+{
+  "type": "record",
+  "name": "AirQualityReading",
+  "namespace": "vn.urbanpulse.streaming",
+  "doc": "Schema for real-time air quality measurements from OpenAQ Vietnam stations",
+  "fields": [
+    {"name": "location_id", "type": "int", "doc": "OpenAQ station ID"},
+    {"name": "location_name", "type": "string", "doc": "Station name"},
+    {"name": "city", "type": "string", "doc": "Vietnamese city/province name"},
+    {"name": "country", "type": "string", "default": "VN"},
+    {"name": "latitude", "type": "double"},
+    {"name": "longitude", "type": "double"},
+    {"name": "parameter", "type": {"type": "enum", "name": "Pollutant", "symbols": ["pm25", "pm10", "o3", "no2", "so2", "co"]}},
+    {"name": "value", "type": "double", "doc": "Measured concentration"},
+    {"name": "unit", "type": "string", "default": "µg/m³"},
+    {"name": "date_utc", "type": "string", "doc": "ISO 8601 UTC timestamp"},
+    {"name": "date_local", "type": "string", "doc": "ISO 8601 local timestamp"},
+    {"name": "source", "type": "string", "default": "openaq"},
+    {"name": "produced_at", "type": "string", "doc": "ISO 8601 when message was produced"}
+  ]
+}

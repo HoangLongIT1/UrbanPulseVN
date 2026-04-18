@@ -1,0 +1,13 @@
+river_id,river_name,monitoring_point,latitude,longitude,basin
+SH01,Sông Hồng,Hà Nội,21.0285,105.8542,Sông Hồng
+SH02,Sông Hồng,Lào Cai,22.4856,103.9707,Sông Hồng
+SD01,Sông Đà,Hòa Bình,20.8171,105.3378,Sông Hồng
+SM01,Sông Mã,Thanh Hóa,19.8067,105.7852,Sông Mã
+SC01,Sông Cả,Nghệ An,18.6737,105.6813,Sông Cả
+SHU01,Sông Hương,Huế,16.4637,107.5909,Sông Hương
+STB01,Sông Thu Bồn,Quảng Nam,15.5394,108.0191,Sông Thu Bồn
+SB01,Sông Ba,Phú Yên,13.0882,109.0929,Sông Ba
+SDN01,Sông Đồng Nai,Đồng Nai,10.9453,106.8244,Sông Đồng Nai
+STI01,Sông Tiền,Tiền Giang,10.4493,106.3420,Sông Cửu Long
+SHA01,Sông Hậu,Cần Thơ,10.0452,105.7469,Sông Cửu Long
+SSG01,Sông Sài Gòn,Hồ Chí Minh,10.8231,106.6297,Sông Đồng Nai

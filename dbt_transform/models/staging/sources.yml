@@ -1,0 +1,99 @@
+# =============================================
+# UrbanPulse VN — dbt Source Definitions
+# =============================================
+# Maps to the bronze schema tables populated by ingestion pipeline.
+# Each source corresponds to one of the 7 data sources.
+
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw data landing zone from ingestion pipeline (Sprint 1)"
+    schema: bronze
+    tables:
+      - name: air_quality
+        description: "OpenAQ air quality measurements (PM2.5, PM10, O3, NO2, SO2, CO) from Vietnamese stations"
+        columns:
+          - name: location_id
+          - name: location_name
+          - name: city
+          - name: country
+          - name: latitude
+          - name: longitude
+          - name: parameter
+          - name: value
+          - name: unit
+          - name: date_utc
+          - name: date_local
+          - name: _ingested_at
+
+      - name: weather
+        description: "Open-Meteo weather data for 63 Vietnamese provinces (temperature, humidity, rain, wind, UV)"
+        columns:
+          - name: city_name
+          - name: latitude
+          - name: longitude
+          - name: time
+          - name: temperature_2m
+          - name: relative_humidity_2m
+          - name: precipitation
+          - name: wind_speed_10m
+          - name: wind_direction_10m
+          - name: uv_index
+          - name: _ingested_at
+
+      - name: flood
+        description: "Open-Meteo flood API — river discharge data for 12 monitoring points"
+        columns:
+          - name: river_name
+          - name: latitude
+          - name: longitude
+          - name: time
+          - name: river_discharge
+          - name: _ingested_at
+
+      - name: cem_aqi
+        description: "CEM.gov.vn crawler — official AQI readings from Vietnam Ministry of Environment"
+        columns:
+          - name: station_name
+          - name: aqi_value
+          - name: category
+          - name: timestamp
+          - name: _ingested_at
+
+      - name: nchmf_disaster
+        description: "NCHMF.gov.vn crawler — natural disaster warnings (storms, floods, earthquakes)"
+        columns:
+          - name: title
+          - name: summary
+          - name: publish_date
+          - name: detail_url
+          - name: disaster_type
+          - name: _ingested_at
+
+      - name: fire_hotspot
+        description: "NASA FIRMS — satellite fire hotspot detections (MODIS/VIIRS) in Vietnam"
+        columns:
+          - name: latitude
+          - name: longitude
+          - name: brightness
+          - name: scan
+          - name: track
+          - name: acq_date
+          - name: acq_time
+          - name: satellite
+          - name: instrument
+          - name: confidence
+          - name: frp
+          - name: _ingested_at
+
+      - name: geo_features
+        description: "OpenStreetMap Overpass API — urban infrastructure (hospitals, schools, industrial zones)"
+        columns:
+          - name: osm_id
+          - name: name
+          - name: feature_type
+          - name: latitude
+          - name: longitude
+          - name: tags
+          - name: _ingested_at

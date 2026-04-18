@@ -1,0 +1,86 @@
+# =============================================
+# Staging Models — Schema & Tests
+# =============================================
+version: 2
+
+models:
+  - name: stg_air_quality
+    description: "Cleaned air quality measurements from OpenAQ"
+    columns:
+      - name: station_id
+        tests: [not_null]
+      - name: pollutant_code
+        tests: [not_null]
+      - name: measurement_value
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: stg_weather
+    description: "Cleaned weather observations from Open-Meteo"
+    columns:
+      - name: city_name
+        tests: [not_null]
+      - name: observed_at
+        tests: [not_null]
+      - name: temperature_celsius
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -10
+              max_value: 50
+
+  - name: stg_flood
+    description: "Cleaned river discharge data from Open-Meteo Flood API"
+    columns:
+      - name: river_name
+        tests: [not_null]
+      - name: discharge_m3s
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: stg_cem_aqi
+    description: "Cleaned AQI from CEM.gov.vn crawler"
+    columns:
+      - name: station_name
+        tests: [not_null]
+      - name: aqi_value
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 500
+
+  - name: stg_nchmf_disaster
+    description: "Cleaned disaster warnings from NCHMF.gov.vn crawler"
+    columns:
+      - name: title
+        tests: [not_null]
+      - name: disaster_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['storm', 'flood', 'landslide', 'earthquake', 'drought', 'high_tide', 'cold_wave', 'heatwave', 'thunderstorm', 'other']
+
+  - name: stg_fire_hotspot
+    description: "Cleaned fire hotspot detections from NASA FIRMS"
+    columns:
+      - name: latitude
+        tests: [not_null]
+      - name: longitude
+        tests: [not_null]
+      - name: confidence_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 30
+              max_value: 100
+
+  - name: stg_geo_features
+    description: "Cleaned urban infrastructure from OpenStreetMap"
+    columns:
+      - name: osm_id
+        tests: [not_null, unique]
+      - name: feature_name
+        tests: [not_null]

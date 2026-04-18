@@ -1,0 +1,74 @@
+# =============================================
+# Mart Models — Schema & Tests (Star Schema)
+# =============================================
+version: 2
+
+models:
+  # ── Dimensions ──
+  - name: dim_location
+    description: "63 Vietnamese provinces + 12 river monitoring points"
+    columns:
+      - name: location_sk
+        tests: [not_null, unique]
+      - name: location_code
+        tests: [not_null, unique]
+
+  - name: dim_time
+    description: "Date dimension 2024-2027 with Vietnamese month/season names"
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+
+  - name: dim_pollutant
+    description: "6 pollutants with WHO/QCVN standards and AQI breakpoints"
+    columns:
+      - name: pollutant_sk
+        tests: [not_null, unique]
+      - name: pollutant_code
+        tests: [not_null, unique]
+
+  - name: dim_station
+    description: "Air quality monitoring stations from OpenAQ"
+    columns:
+      - name: station_sk
+        tests: [not_null, unique]
+      - name: station_id
+        tests: [not_null, unique]
+
+  - name: dim_disaster_type
+    description: "10 disaster types with Vietnamese + English names"
+    columns:
+      - name: disaster_type_sk
+        tests: [not_null, unique]
+      - name: disaster_code
+        tests: [not_null, unique]
+
+  # ── Facts ──
+  - name: fact_air_measurements
+    description: "Central fact: air quality measurements at station×pollutant×time grain"
+    columns:
+      - name: station_sk
+        tests: [not_null]
+      - name: pollutant_sk
+        tests: [not_null]
+      - name: measurement_value
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: fact_weather_observations
+    description: "Weather observations at city×hour grain with heat index"
+    columns:
+      - name: date_key
+        tests: [not_null]
+      - name: city_name
+        tests: [not_null]
+
+  - name: fact_natural_disasters
+    description: "Disaster warning events with severity and classification"
+    columns:
+      - name: disaster_event_sk
+        tests: [not_null, unique]
+      - name: date_key
+        tests: [not_null]

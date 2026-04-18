@@ -1,0 +1,24 @@
+{
+  "name": "urbanpulse-postgres-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "urbanpulse-postgres",
+    "database.port": "5432",
+    "database.user": "urbanpulse",
+    "database.password": "urbanpulse_dev_2024",
+    "database.dbname": "urbanpulse",
+    "topic.prefix": "cdc",
+    "schema.include.list": "bronze,silver",
+    "plugin.name": "pgoutput",
+    "slot.name": "urbanpulse_slot",
+    "publication.name": "urbanpulse_pub",
+    "table.include.list": "bronze.air_quality,bronze.weather,bronze.flood,bronze.cem_aqi,bronze.nchmf_disaster,bronze.fire_hotspot",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "snapshot.mode": "initial",
+    "heartbeat.interval.ms": "10000",
+    "tombstones.on.delete": "false"
+  }
+}

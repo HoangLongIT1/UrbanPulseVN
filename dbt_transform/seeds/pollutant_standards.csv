@@ -1,0 +1,7 @@
+pollutant_code,pollutant_name,unit,who_guideline_24h,qcvn_standard_24h,who_guideline_annual,qcvn_standard_annual,aqi_breakpoint_good,aqi_breakpoint_moderate,aqi_breakpoint_unhealthy_sg,aqi_breakpoint_unhealthy,aqi_breakpoint_very_unhealthy,aqi_breakpoint_hazardous
+pm25,PM2.5,µg/m³,15.0,50.0,5.0,25.0,12.0,35.4,55.4,150.4,250.4,500.4
+pm10,PM10,µg/m³,45.0,150.0,15.0,50.0,54.0,154.0,254.0,354.0,424.0,604.0
+o3,Ozone (O3),µg/m³,100.0,120.0,,60.0,54.0,70.0,85.0,105.0,200.0,604.0
+no2,Nitrogen Dioxide (NO2),µg/m³,25.0,100.0,10.0,40.0,53.0,100.0,360.0,649.0,1249.0,2049.0
+so2,Sulfur Dioxide (SO2),µg/m³,40.0,125.0,,50.0,35.0,75.0,185.0,304.0,604.0,1004.0
+co,Carbon Monoxide (CO),mg/m³,4.0,10.0,,,4.4,9.4,12.4,15.4,30.4,50.4

@@ -1,0 +1,52 @@
+# =============================================
+# Intermediate Models — Schema & Tests
+# =============================================
+version: 2
+
+models:
+  - name: int_daily_aqi_city
+    description: "Daily AQI aggregated by city, combining OpenAQ + CEM sources"
+    columns:
+      - name: city_name
+        tests: [not_null]
+      - name: measurement_date
+        tests: [not_null]
+
+  - name: int_weather_hourly
+    description: "Hourly weather with heat index and comfort level"
+    columns:
+      - name: city_name
+        tests: [not_null]
+      - name: observed_at
+        tests: [not_null]
+      - name: comfort_level
+        tests:
+          - accepted_values:
+              values: ['cold', 'comfortable', 'warm', 'hot', 'extreme_heat']
+
+  - name: int_disaster_impact
+    description: "Daily disaster impact analysis with severity scoring"
+    columns:
+      - name: event_date
+        tests: [not_null]
+      - name: disaster_type
+        tests: [not_null]
+      - name: impact_level
+        tests:
+          - accepted_values:
+              values: ['low', 'moderate', 'high', 'extreme']
+
+  - name: int_environmental_risk
+    description: "Composite environmental risk score (0-100) per day"
+    columns:
+      - name: risk_date
+        tests: [not_null]
+      - name: composite_risk_score
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: risk_level
+        tests:
+          - accepted_values:
+              values: ['low', 'moderate', 'high', 'critical']

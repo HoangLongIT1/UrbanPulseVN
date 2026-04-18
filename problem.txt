@@ -1,0 +1,18 @@
+A: ủa hiện aws không cho free nữa hả, tôi nghe đồn vậy
+
+B: Lời đồn đó đúng một nửa và bạn cần hết sức cẩn thận, đặc biệt là với tài khoản mới lập từ giữa năm 2025 trở đi. AWS đã thay đổi cuộc chơi một cách đáng kể.
+Dưới đây là sự thật về "AWS Free" trong năm 2026 để bạn cân nhắc cho dự án UrbanPulseVN:
+
+1. Thay đổi lớn: Từ "Hạn mức sử dụng" sang "Hệ thống Credit"
+Trước đây, AWS cho bạn dùng "thả ga" một số dịch vụ (như EC2 750 giờ/tháng) trong vòng 12 tháng. Nhưng hiện tại:
+Gói Free Plan mới: Thay vì cho dùng miễn phí vô điều kiện, AWS cấp cho tài khoản mới $200 Credit ($100 khi đăng ký và $100 khi trải nghiệm dịch vụ).
+Thời gian bảo vệ: Bạn chỉ được bảo vệ khỏi việc bị tính phí trong 6 tháng đầu hoặc cho đến khi hết $200 Credit đó (tùy điều kiện nào đến trước).
+Tự động đóng tài khoản: Sau 6 tháng, nếu bạn không chủ động nâng cấp lên "Paid Plan", AWS sẽ tự động đóng tài khoản và xóa dữ liệu sau 90 ngày.
+
+2. Dịch vụ "Always Free" vẫn còn (nhưng có bẫy)
+Các dịch vụ như AWS Lambda (1 triệu request/tháng) hay DynamoDB (25GB) vẫn được ghi là "Always Free". Tuy nhiên:
+Nếu bạn đang ở gói "Free Plan" (chưa nâng cấp lên Paid), khi hết 6 tháng hoặc hết Credit, tài khoản của bạn vẫn bị khóa kể cả khi bạn chỉ dùng dịch vụ Always Free.
+Bạn buộc phải add thẻ và nâng cấp lên Paid Plan để tiếp tục dùng những thứ "miễn phí" này lâu dài.
+3. Tại sao nó nguy hiểm cho dự án UrbanPulseVN của bạn?
+Rủi ro "bay màu" dự án: Như bạn nói, dự án UrbanPulseVN định hướng kéo dài. Nếu bạn dùng AWS, sau 6 tháng tài khoản bị đóng, toàn bộ database PostgreSQL hay Redis bạn dày công xây dựng sẽ biến mất nếu quên không nâng cấp/sao lưu.
+Vượt hạn mức âm thầm: Nếu script cào dữ liệu của bạn chạy lỗi hoặc tạo ra quá nhiều log/băng thông, nó sẽ trừ sạch $200 Credit rất nhanh.

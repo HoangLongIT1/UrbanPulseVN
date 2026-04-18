@@ -1,0 +1,43 @@
+# =============================================
+# UrbanPulse VN — dbt Project Configuration
+# =============================================
+name: 'urbanpulse_vn'
+version: '1.0.0'
+config-version: 2
+
+profile: 'urbanpulse_vn'
+
+# Model paths
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+asset-paths: ["assets"]
+
+# Clean targets
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Model-level configs (Medallion Architecture)
+models:
+  urbanpulse_vn:
+    staging:
+      +materialized: view
+      +schema: silver
+      +tags: ['staging']
+    intermediate:
+      +materialized: view
+      +schema: silver
+      +tags: ['intermediate']
+    marts:
+      +materialized: table
+      +schema: gold
+      +tags: ['marts']
+
+# Seed configs
+seeds:
+  urbanpulse_vn:
+    +schema: gold
