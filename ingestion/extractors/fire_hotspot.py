@@ -8,7 +8,7 @@ API docs: https://earthdata.nasa.gov/firms/api
 Format: CSV -> Pandas DataFrame.
 
 Authentication note:
-    NASA FIRMS country/CSV endpoint requires the MAP_KEY embedded in the URL
+    NASA FIRMS area/CSV endpoint requires the MAP_KEY embedded in the URL
     path — this is the API's own design and cannot be moved to a header.
     The key is therefore NOT logged at INFO level; only a redacted URL is
     emitted for traceability. Ensure NASA_EARTHDATA_TOKEN is stored
@@ -29,16 +29,19 @@ from ingestion.extractors.base import BaseExtractor, ExtractionError
 
 logger = logging.getLogger(__name__)
 
-# NASA FIRMS country + source + day-range path segments (no token)
-_FIRMS_COUNTRY: str = "VNM"
+# NASA FIRMS area endpoint config (country endpoint is currently unavailable)
 _FIRMS_SOURCE: str = "VIIRS_NOAA20_NRT"
 _FIRMS_DAY_RANGE: int = 1
+
+# Vietnam bounding box (West, South, East, North)
+_VN_BBOX: str = "102.14,8.18,109.46,23.39"
 
 
 class NASAFirmsExtractor(BaseExtractor):
     """Extract active fire hotspots for Vietnam.
 
-    Uses the FIRMS country/csv endpoint. We bound the query to VNM.
+    Uses the FIRMS area/csv endpoint with Vietnam's bounding box
+    since the /country endpoint is currently unavailable.
 
     Example:
         >>> with NASAFirmsExtractor() as ext:
@@ -65,19 +68,18 @@ class NASAFirmsExtractor(BaseExtractor):
             )
             raise ExtractionError("Missing NASA Earthdata Token")
 
-        # NASA FIRMS country/CSV API requires the MAP_KEY in the URL path.
-        # This is a design constraint of their API — no header-based auth
-        # is available for this endpoint.
+        # NASA FIRMS area/CSV API requires the MAP_KEY in the URL path.
+        # Using /area endpoint because /country is currently unavailable.
         firms_url = (
-            "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
+            "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
             f"/{NASA_EARTHDATA_TOKEN}"
-            f"/{_FIRMS_SOURCE}/{_FIRMS_COUNTRY}/{_FIRMS_DAY_RANGE}"
+            f"/{_FIRMS_SOURCE}/{_VN_BBOX}/{_FIRMS_DAY_RANGE}"
         )
 
         # Log a redacted URL so the token does not appear in application logs.
         safe_url = (
-            "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
-            f"/***/{_FIRMS_SOURCE}/{_FIRMS_COUNTRY}/{_FIRMS_DAY_RANGE}"
+            "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+            f"/***/{_FIRMS_SOURCE}/{_VN_BBOX}/{_FIRMS_DAY_RANGE}"
         )
         logger.info("Fetching NASA FIRMS data: %s", safe_url)
 
@@ -92,7 +94,7 @@ class NASAFirmsExtractor(BaseExtractor):
         df = pd.read_csv(StringIO(csv_data))
 
         if df.empty:
-            logger.warning("NASA FIRMS returned 0 hotspots for %s", _FIRMS_COUNTRY)
+            logger.warning("NASA FIRMS returned 0 hotspots for Vietnam bbox")
             raise ExtractionError("0 hotspots returned")
 
         logger.info("Extracted %d active fire hotspots", len(df))

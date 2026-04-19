@@ -30,9 +30,9 @@ class PostgresLoader:
             self.conn = psycopg2.connect(
                 host=get_env("POSTGRES_HOST", "localhost"),
                 port=int(get_env("POSTGRES_PORT", "5432")),
-                dbname=get_env("POSTGRES_DB", "urbanpulsedb"),
-                user=get_env("POSTGRES_USER", "postgres"),
-                password=get_env("POSTGRES_PASSWORD", "postgres"),
+                dbname=get_env("POSTGRES_DB", "urbanpulse"),
+                user=get_env("POSTGRES_USER", "urbanpulse"),
+                password=get_env("POSTGRES_PASSWORD", "urbanpulse_dev_2024"),
             )
             self.conn.autocommit = True
             logger.info("PostgresLoader connected successfully")

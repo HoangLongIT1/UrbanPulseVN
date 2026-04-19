@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Parameters supported by OpenAQ v3
 _TARGET_PARAMETERS: list[str] = ["pm25", "pm10", "o3", "no2", "so2", "co"]
-_COUNTRY_CODE: str = "VN"
+_COUNTRY_ID: int = 56  # Vietnam's numeric ID on OpenAQ v3
 _PAGE_LIMIT: int = 100  # max results per page (OpenAQ default)
 
 # Delay between per-location /latest calls to respect the 100 req/min limit.
@@ -93,9 +93,12 @@ class AirQualityExtractor(BaseExtractor):
                 time.sleep(_PER_LOCATION_DELAY)
 
         if not all_records:
-            raise ExtractionError(
-                "OpenAQ returned 0 measurements for VN locations"
+            logger.warning(
+                "OpenAQ returned 0 measurements for %d VN locations "
+                "(stations may be offline)",
+                len(locations),
             )
+            return pd.DataFrame()
 
         logger.info("Extracted %d air quality measurements", len(all_records))
         return self._records_to_dataframe(all_records)
@@ -115,7 +118,7 @@ class AirQualityExtractor(BaseExtractor):
 
         while True:
             params: dict[str, Any] = {
-                "countries_id": _COUNTRY_CODE,
+                "countries_id": _COUNTRY_ID,
                 "limit": _PAGE_LIMIT,
                 "page": page,
             }
@@ -158,6 +161,10 @@ class AirQualityExtractor(BaseExtractor):
     ) -> list[dict[str, Any]]:
         """Fetch the latest measurements for a single location.
 
+        OpenAQ v3 /latest returns {value, sensorsId, datetime, coordinates}
+        but does NOT include parameter info. We build a sensor→parameter
+        mapping from the location's ``sensors`` array to resolve names.
+
         Args:
             location: A location dict from the /locations endpoint.
 
@@ -170,6 +177,17 @@ class AirQualityExtractor(BaseExtractor):
         coords = location.get("coordinates", {})
         lat = coords.get("latitude")
         lon = coords.get("longitude")
+
+        # Build sensor_id → {param_name, units} mapping from location data
+        sensor_map: dict[int, dict[str, str]] = {}
+        for sensor in location.get("sensors", []):
+            sid = sensor.get("id")
+            param = sensor.get("parameter", {})
+            if sid and param:
+                sensor_map[sid] = {
+                    "name": param.get("name", "").lower(),
+                    "units": param.get("units", ""),
+                }
 
         try:
             response = self._get(
@@ -189,16 +207,20 @@ class AirQualityExtractor(BaseExtractor):
         measurements = data.get("results", [])
 
         for measurement in measurements:
-            param = measurement.get("parameter", {})
-            param_name = (
-                param.get("name", "").lower()
-                if isinstance(param, dict)
-                else str(param).lower()
-            )
+            # Resolve parameter via sensorsId → sensor_map
+            sensors_id = measurement.get("sensorsId")
+            sensor_info = sensor_map.get(sensors_id, {})
+            param_name = sensor_info.get("name", "")
+            param_units = sensor_info.get("units", "")
 
             # Only collect our target pollutants
             if param_name not in _TARGET_PARAMETERS:
                 continue
+
+            # Extract datetime (v3 returns nested {utc, local})
+            dt_raw = measurement.get("datetime", "")
+            if isinstance(dt_raw, dict):
+                dt_raw = dt_raw.get("utc", "")
 
             record: dict[str, Any] = {
                 "location_id": location_id,
@@ -208,16 +230,10 @@ class AirQualityExtractor(BaseExtractor):
                 "longitude": lon,
                 "parameter": param_name,
                 "value": measurement.get("value"),
-                "unit": (
-                    param.get("units", "")
-                    if isinstance(param, dict)
-                    else ""
-                ),
-                "last_updated": measurement.get(
-                    "datetime",
-                    measurement.get("lastUpdated", ""),
-                ),
+                "unit": param_units,
+                "last_updated": dt_raw,
             }
             records.append(record)
 
         return records
+
