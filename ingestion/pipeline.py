@@ -89,7 +89,13 @@ class IngestionPipeline:
                 # 4. Load to MinIO Bronze Layer
                 object_path = self.minio.load(source_name=source_name, df=df)
 
-                # 5. Log to PostgreSQL registry
+                # 5. Load to PostgreSQL Bronze Layer (for dbt transformation)
+                try:
+                    self.pg.load(source_name=source_name, df=df)
+                except Exception as pg_exc:
+                    logger.error("Database load failed for %s: %s", source_name, pg_exc)
+
+                # 6. Log to PostgreSQL registry
                 self.pg.log_run(
                     source_name=source_name,
                     row_count=len(df),

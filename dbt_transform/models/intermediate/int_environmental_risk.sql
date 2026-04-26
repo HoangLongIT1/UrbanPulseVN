@@ -46,7 +46,7 @@ fire_risk as (
         count(*)                                    as hotspot_count,
         avg(fire_radiative_power_mw)                as avg_frp
     from {{ ref('stg_fire_hotspot') }}
-    where confidence_pct >= 50
+    where confidence_level in ('high', 'nominal')
     group by 1
 )
 

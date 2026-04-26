@@ -22,7 +22,7 @@ cleaned as (
         cast(river_discharge as numeric(12, 2))        as discharge_m3s,
 
         -- Metadata
-        cast(_ingested_at as timestamp)                as ingested_at
+        cast(_extracted_at as timestamp)               as ingested_at
 
     from source
     where time is not null

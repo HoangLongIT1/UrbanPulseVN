@@ -10,12 +10,12 @@ with disasters as (
 
 daily_impact as (
     select
-        date_trunc('day', published_at)             as event_date,
+        date_trunc('day', cast(published_at as timestamp)) as event_date,
         disaster_type,
         severity_level,
         count(*)                                    as alert_count,
-        min(published_at)                           as first_alert_at,
-        max(published_at)                           as last_alert_at,
+        min(cast(published_at as timestamp))        as first_alert_at,
+        max(cast(published_at as timestamp))        as last_alert_at,
 
         -- Severity score (for aggregation)
         sum(

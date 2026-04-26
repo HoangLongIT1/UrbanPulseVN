@@ -11,7 +11,7 @@ with source as (
 cleaned as (
     select
         -- Location
-        coalesce(city_name, 'Unknown')              as city_name,
+        coalesce(city, 'Unknown')                   as city_name,
         cast(latitude as numeric(10, 6))            as latitude,
         cast(longitude as numeric(10, 6))           as longitude,
 
@@ -25,9 +25,10 @@ cleaned as (
         cast(wind_speed_10m as numeric(6, 2))       as wind_speed_kmh,
         cast(wind_direction_10m as numeric(5, 1))   as wind_direction_deg,
         coalesce(cast(uv_index as numeric(4, 1)), 0) as uv_index,
+        cast(surface_pressure as numeric(8, 2))     as surface_pressure_hpa,
 
         -- Metadata
-        cast(_ingested_at as timestamp)             as ingested_at
+        cast(_extracted_at as timestamp)            as ingested_at
 
     from source
     where time is not null

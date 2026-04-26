@@ -17,7 +17,6 @@ with measurements as (
         measurement_value,
         unit,
         measured_at_utc,
-        measured_at_local,
         ingested_at
     from {{ ref('stg_air_quality') }}
 ),
@@ -57,7 +56,6 @@ enriched as (
 
         -- Time
         m.measured_at_utc,
-        m.measured_at_local,
         m.ingested_at
 
     from measurements m

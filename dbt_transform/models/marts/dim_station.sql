@@ -8,7 +8,6 @@ with stations as (
         station_id,
         station_name,
         city,
-        country_code,
         latitude,
         longitude
     from {{ ref('stg_air_quality') }}
@@ -20,7 +19,7 @@ select
     station_id,
     station_name,
     city,
-    country_code,
+    'VN'                                            as country_code,
     latitude,
     longitude
 from stations

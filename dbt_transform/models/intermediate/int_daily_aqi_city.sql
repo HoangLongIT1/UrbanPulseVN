@@ -22,7 +22,7 @@ with openaq_daily as (
 cem_daily as (
     select
         station_name                                as city_name,
-        date_trunc('day', measured_at)              as measurement_date,
+        date_trunc('day', cast(measured_at as timestamp)) as measurement_date,
         avg(aqi_value)                              as avg_aqi,
         min(aqi_value)                              as min_aqi,
         max(aqi_value)                              as max_aqi,

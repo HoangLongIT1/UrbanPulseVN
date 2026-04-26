@@ -3,6 +3,11 @@
 # =============================================
 # Maps to the bronze schema tables populated by ingestion pipeline.
 # Each source corresponds to one of the 7 data sources.
+#
+# IMPORTANT: Column names MUST match the actual DataFrame columns
+# produced by the extractors/crawlers + base metadata columns.
+# Extractors add: _source, _extracted_at, _run_mode
+# Crawlers add:   _source, _crawled_at, _run_mode
 
 version: 2
 
@@ -17,20 +22,20 @@ sources:
           - name: location_id
           - name: location_name
           - name: city
-          - name: country
           - name: latitude
           - name: longitude
           - name: parameter
           - name: value
           - name: unit
-          - name: date_utc
-          - name: date_local
-          - name: _ingested_at
+          - name: last_updated
+          - name: _source
+          - name: _extracted_at
+          - name: _run_mode
 
       - name: weather
         description: "Open-Meteo weather data for 63 Vietnamese provinces (temperature, humidity, rain, wind, UV)"
         columns:
-          - name: city_name
+          - name: city
           - name: latitude
           - name: longitude
           - name: time
@@ -40,7 +45,10 @@ sources:
           - name: wind_speed_10m
           - name: wind_direction_10m
           - name: uv_index
-          - name: _ingested_at
+          - name: surface_pressure
+          - name: _source
+          - name: _extracted_at
+          - name: _run_mode
 
       - name: flood
         description: "Open-Meteo flood API — river discharge data for 12 monitoring points"
@@ -50,7 +58,9 @@ sources:
           - name: longitude
           - name: time
           - name: river_discharge
-          - name: _ingested_at
+          - name: _source
+          - name: _extracted_at
+          - name: _run_mode
 
       - name: cem_aqi
         description: "CEM.gov.vn crawler — official AQI readings from Vietnam Ministry of Environment"
@@ -58,8 +68,10 @@ sources:
           - name: station_name
           - name: aqi_value
           - name: category
-          - name: timestamp
-          - name: _ingested_at
+          - name: published_time
+          - name: _source
+          - name: _crawled_at
+          - name: _run_mode
 
       - name: nchmf_disaster
         description: "NCHMF.gov.vn crawler — natural disaster warnings (storms, floods, earthquakes)"
@@ -68,15 +80,16 @@ sources:
           - name: summary
           - name: publish_date
           - name: detail_url
-          - name: disaster_type
-          - name: _ingested_at
+          - name: _source
+          - name: _crawled_at
+          - name: _run_mode
 
       - name: fire_hotspot
-        description: "NASA FIRMS — satellite fire hotspot detections (MODIS/VIIRS) in Vietnam"
+        description: "NASA FIRMS — satellite fire hotspot detections (VIIRS) in Vietnam"
         columns:
           - name: latitude
           - name: longitude
-          - name: brightness
+          - name: bright_ti4
           - name: scan
           - name: track
           - name: acq_date
@@ -85,15 +98,19 @@ sources:
           - name: instrument
           - name: confidence
           - name: frp
-          - name: _ingested_at
+          - name: daynight
+          - name: _source
+          - name: _extracted_at
+          - name: _run_mode
 
       - name: geo_features
-        description: "OpenStreetMap Overpass API — urban infrastructure (hospitals, schools, industrial zones)"
+        description: "OpenStreetMap Overpass API — urban infrastructure (hospitals, fire stations)"
         columns:
-          - name: osm_id
-          - name: name
-          - name: feature_type
+          - name: node_id
           - name: latitude
           - name: longitude
-          - name: tags
-          - name: _ingested_at
+          - name: amenity_type
+          - name: name
+          - name: _source
+          - name: _extracted_at
+          - name: _run_mode

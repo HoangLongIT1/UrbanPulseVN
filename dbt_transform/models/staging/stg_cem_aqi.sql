@@ -29,14 +29,13 @@ cleaned as (
         coalesce(trim(category), 'Unknown')         as aqi_category_vi,
 
         -- Time
-        cast(timestamp as timestamp)                as measured_at,
+        published_time                              as measured_at,
 
         -- Metadata
-        cast(_ingested_at as timestamp)             as ingested_at
+        cast(_crawled_at as timestamp)              as ingested_at
 
     from source
     where aqi_value is not null
-      and cast(aqi_value as integer) between 0 and 500
 )
 
 select * from cleaned

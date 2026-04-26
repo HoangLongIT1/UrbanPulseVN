@@ -63,14 +63,7 @@ class PostgresLoader:
         object_path: str, 
         status: str = "SUCCESS"
     ) -> None:
-        """Log an extraction/crawl run to the registry.
-
-        Args:
-            source_name: Data source identifier.
-            row_count: Number of rows pulled.
-            object_path: MinIO path where data landed.
-            status: Status of the ingestion run.
-        """
+        """Log an extraction/crawl run to the registry."""
         query = """
         INSERT INTO ingestion_logs (source_name, row_count, object_path, status)
         VALUES (%s, %s, %s, %s)
@@ -82,7 +75,47 @@ class PostgresLoader:
         except Exception as exc:
             logger.error("Failed to log run to Postgres: %s", exc)
 
+    def load(self, source_name: str, df: Any) -> None:
+        """Load DataFrame rows into the bronze schema.
+
+        Args:
+            source_name: Table name (will be created in 'bronze' schema).
+            df: Pandas DataFrame to load.
+        """
+        if df.empty:
+            return
+
+        table_name = f"bronze.{source_name}"
+
+        # Quote all column names for safety
+        quoted_cols = ", ".join([f'"{c}"' for c in df.columns])
+
+        # 1. Create table if not exists (all TEXT for Bronze raw layer)
+        columns_def = ", ".join([f'"{c}" TEXT' for c in df.columns])
+        create_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_def});"
+
+        # 2. Convert DataFrame to list of tuples, handling NaN/NaT → None
+        clean_df = df.copy()
+        for col in clean_df.columns:
+            clean_df[col] = clean_df[col].apply(
+                lambda v: None if v is None or (isinstance(v, float) and str(v) == 'nan') else str(v)
+            )
+        tuples = [tuple(row) for row in clean_df.to_numpy()]
+
+        insert_query = f"INSERT INTO {table_name} ({quoted_cols}) VALUES %s"
+
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(create_query)
+                cur.execute(f"TRUNCATE TABLE {table_name};")
+                execute_values(cur, insert_query, tuples)
+            logger.info("Loaded %d rows into %s", len(df), table_name)
+        except Exception as exc:
+            logger.error("Failed to load data into %s: %s", table_name, exc)
+            raise
+
     def close(self) -> None:
         if self.conn:
             self.conn.close()
             logger.info("PostgresLoader disconnected")
+
