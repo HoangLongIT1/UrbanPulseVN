@@ -2,7 +2,7 @@
 -- stg_air_quality: Cleaned OpenAQ air quality data
 -- =============================================
 -- Source: OpenAQ API (PM2.5, PM10, O3, NO2, SO2, CO)
--- Transforms: standardize column names, cast types, COALESCE nulls
+-- Transforms: standardize column names, normalize city names, cast types
 
 with source as (
     select * from {{ source('bronze', 'air_quality') }}
@@ -13,7 +13,16 @@ cleaned as (
         -- IDs
         cast(location_id as integer)          as station_id,
         coalesce(location_name, 'Unknown')    as station_name,
-        coalesce(city, 'Unknown')             as city,
+
+        -- City Normalization (standardize to Vietnamese names for cross-source join)
+        case
+            when lower(city) = 'hanoi' then 'Hà Nội'
+            when lower(city) = 'ho chi minh city' or lower(city) = 'ho chi minh' then 'Hồ Chí Minh'
+            when lower(city) = 'da nang' then 'Đà Nẵng'
+            when lower(city) = 'haiphong' or lower(city) = 'hai phong' then 'Hải Phòng'
+            when lower(city) = 'can tho' then 'Cần Thơ'
+            else coalesce(city, 'Unknown')
+        end                                   as city,
 
         -- Geo
         cast(latitude as numeric(10, 6))      as latitude,

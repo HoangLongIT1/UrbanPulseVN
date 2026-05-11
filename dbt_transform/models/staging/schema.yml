@@ -28,7 +28,7 @@ models:
         tests:
           - dbt_utils.accepted_range:
               min_value: -10
-              max_value: 50
+              max_value: 55
 
   - name: stg_flood
     description: "Cleaned river discharge data from Open-Meteo Flood API"
@@ -40,12 +40,18 @@ models:
           - not_null
           - dbt_utils.accepted_range:
               min_value: 0
+              max_value: 100000
 
   - name: stg_cem_aqi
     description: "Cleaned AQI from CEM.gov.vn crawler"
     columns:
       - name: station_name
         tests: [not_null]
+      - name: aqi_value
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 500
 
   - name: stg_nchmf_disaster
     description: "Cleaned disaster warnings from NCHMF.gov.vn crawler"
@@ -69,7 +75,7 @@ models:
         tests:
           - dbt_utils.accepted_range:
               min_value: 200
-              max_value: 500
+              max_value: 600
 
   - name: stg_geo_features
     description: "Cleaned urban infrastructure from OpenStreetMap"

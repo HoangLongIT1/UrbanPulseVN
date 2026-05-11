@@ -7,22 +7,23 @@
 with openaq_daily as (
     select
         city                                        as city_name,
-        latitude,
-        longitude,
         date_trunc('day', measured_at_utc)          as measurement_date,
         pollutant_code,
         avg(measurement_value)                      as avg_value,
         min(measurement_value)                      as min_value,
         max(measurement_value)                      as max_value,
-        count(*)                                    as reading_count
+        count(*)                                    as reading_count,
+        -- Representative lat/lon for the city
+        avg(latitude)                               as latitude,
+        avg(longitude)                              as longitude
     from {{ ref('stg_air_quality') }}
-    group by 1, 2, 3, 4, 5
+    group by 1, 2, 3
 ),
 
 cem_daily as (
     select
-        station_name                                as city_name,
-        date_trunc('day', cast(measured_at as timestamp)) as measurement_date,
+        city_name,
+        date_trunc('day', measured_at)              as measurement_date,
         avg(aqi_value)                              as avg_aqi,
         min(aqi_value)                              as min_aqi,
         max(aqi_value)                              as max_aqi,
@@ -30,6 +31,7 @@ cem_daily as (
         -- Most frequent category in the day
         mode() within group (order by aqi_category) as dominant_category
     from {{ ref('stg_cem_aqi') }}
+    where measured_at is not null
     group by 1, 2
 )
 

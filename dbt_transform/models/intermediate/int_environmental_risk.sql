@@ -2,7 +2,7 @@
 -- int_environmental_risk: Combined risk score
 -- =============================================
 -- Cross-source risk: AQI + flood + fire hotspots
--- Produces a 0-100 composite risk score per day per area
+-- Produces a 0-100 composite risk score per day per province
 
 with aqi_risk as (
     select
@@ -21,27 +21,37 @@ with aqi_risk as (
     from {{ ref('int_daily_aqi_city') }}
 ),
 
+-- Fix: Aggregate flood risk by city/province before joining
+flood_risk_prep as (
+    select
+        f.observed_at,
+        r.river_name,
+        -- Map river monitoring point to nearby city
+        r.monitoring_point                          as city_name,
+        f.discharge_m3s
+    from {{ ref('stg_flood') }} f
+    join {{ ref('vietnam_rivers') }} r
+        on f.river_name = r.river_name
+        -- Since stg_flood doesn't have station ID, we match on name
+),
+
 flood_risk as (
     select
         date_trunc('day', observed_at)              as risk_date,
-        river_name,
-        latitude,
-        longitude,
+        city_name,
         -- Flood risk component (0-30 points)
-        -- Threshold: > 5000 m³/s is high risk for major Vietnamese rivers
         least(round(cast(
             avg(discharge_m3s) / 5000.0 * 30
         as numeric), 1), 30)                        as flood_risk_score,
         avg(discharge_m3s)                          as avg_discharge
-    from {{ ref('stg_flood') }}
-    group by 1, 2, 3, 4
+    from flood_risk_prep
+    group by 1, 2
 ),
 
 fire_risk as (
     select
         detection_date                              as risk_date,
         -- Fire risk component (0-30 points)
-        -- Each high-confidence hotspot adds points
         least(count(*) * 3, 30)                     as fire_risk_score,
         count(*)                                    as hotspot_count,
         avg(fire_radiative_power_mw)                as avg_frp
@@ -52,7 +62,7 @@ fire_risk as (
 
 select
     coalesce(a.risk_date, fl.risk_date, fi.risk_date) as risk_date,
-    a.city_name,
+    coalesce(a.city_name, fl.city_name, 'Regional') as province_name,
     a.latitude,
     a.longitude,
 
@@ -70,25 +80,18 @@ select
 
     -- Risk level
     case
-        when coalesce(a.aqi_risk_score, 0)
-             + coalesce(fl.flood_risk_score, 0)
-             + coalesce(fi.fire_risk_score, 0) >= 70 then 'critical'
-        when coalesce(a.aqi_risk_score, 0)
-             + coalesce(fl.flood_risk_score, 0)
-             + coalesce(fi.fire_risk_score, 0) >= 50 then 'high'
-        when coalesce(a.aqi_risk_score, 0)
-             + coalesce(fl.flood_risk_score, 0)
-             + coalesce(fi.fire_risk_score, 0) >= 25 then 'moderate'
+        when (coalesce(a.aqi_risk_score, 0) + coalesce(fl.flood_risk_score, 0) + coalesce(fi.fire_risk_score, 0)) >= 70 then 'critical'
+        when (coalesce(a.aqi_risk_score, 0) + coalesce(fl.flood_risk_score, 0) + coalesce(fi.fire_risk_score, 0)) >= 50 then 'high'
+        when (coalesce(a.aqi_risk_score, 0) + coalesce(fl.flood_risk_score, 0) + coalesce(fi.fire_risk_score, 0)) >= 25 then 'moderate'
         else 'low'
     end                                             as risk_level,
 
-    -- Details
     fl.avg_discharge,
-    fi.hotspot_count,
-    fi.avg_frp
+    fi.hotspot_count
 
 from aqi_risk a
-left join flood_risk fl
+full outer join flood_risk fl
     on a.risk_date = fl.risk_date
-left join fire_risk fi
-    on a.risk_date = fi.risk_date
+    and a.city_name = fl.city_name
+full outer join fire_risk fi
+    on coalesce(a.risk_date, fl.risk_date) = fi.risk_date

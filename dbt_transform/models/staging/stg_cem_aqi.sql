@@ -10,8 +10,16 @@ with source as (
 
 cleaned as (
     select
-        -- Station
+        -- Station & City Normalization
         coalesce(trim(station_name), 'Unknown')    as station_name,
+        case
+            when station_name like '%Hà Nội%' or station_name like '%Hanoi%' then 'Hà Nội'
+            when station_name like '%Hồ Chí Minh%' or station_name like '%HCM%' then 'Hồ Chí Minh'
+            when station_name like '%Đà Nẵng%' then 'Đà Nẵng'
+            when station_name like '%Hải Phòng%' then 'Hải Phòng'
+            when station_name like '%Cần Thơ%' then 'Cần Thơ'
+            else station_name
+        end                                         as city_name,
 
         -- AQI value
         cast(aqi_value as integer)                 as aqi_value,
@@ -28,8 +36,12 @@ cleaned as (
         end                                         as aqi_category,
         coalesce(trim(category), 'Unknown')         as aqi_category_vi,
 
-        -- Time
-        published_time                              as measured_at,
+        -- Robust Time Parsing (Handles "HH:MI DD/MM/YYYY")
+        case
+            when published_time ~ '\d{2}:\d{2} \d{2}/\d{2}/\d{4}'
+                then to_timestamp(published_time, 'HH24:MI DD/MM/YYYY')
+            else null
+        end                                         as measured_at,
 
         -- Metadata
         cast(_crawled_at as timestamp)              as ingested_at
